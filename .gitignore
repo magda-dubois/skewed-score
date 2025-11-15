@@ -1,0 +1,9 @@
+# Inference data files (too large for GitHub)
+**/inference_data.nc
+**/output/
+**/output/process/
+**/output/model/
+**/output/communicate/
+
+# Keep output structure but ignore large files
+!**/output/.gitkeep

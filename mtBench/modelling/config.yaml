@@ -1,0 +1,51 @@
+# uv run hibayes-process --config config.yaml --data ../data/all.jsonl --out output/process/
+data_process:
+  path: custom_processor.py
+  processors:
+    - extract_observed_feature: {feature_name: left_chosen}
+    - extract_features: 
+        categorical_features: ['left_model', 'right_model', 'grader', 'question_id']
+        continuous_features: [length_diff, position_numeric]
+        effect_coding_for_main_effects: true
+        standardise: true
+        interactions: true
+    - add_pairwise_model_dims:
+        model_feature: left_model
+        group_features: [question_id]
+
+# uv run hibayes-model --config config.yaml --analysis-state output/process/ --out output/model/
+model:
+  path: custom_model.py
+  models:
+    - name: pairwise_logistic_model_nc
+      config:
+        tag: _full
+        hierarchical_effects: 
+          - [question_id, 'left_model']
+          - [grader, position_numeric]
+          - [grader, length_diff]
+        hierarchical_continuous: [position_numeric, length_diff]
+        prior_hierarchical_mean_scale: 1.0 
+        prior_hierarchical_sigma_scale: 0.5  
+
+check:
+  checkers:
+    - prior_predictive_plot: {interactive: false}
+    - divergences
+    - r_hat
+    - ess_bulk
+    - ess_tail
+    - posterior_predictive_plot: {interactive: false}
+    - waic
+
+# uv run hibayes-comm --config config.yaml --analysis-state output/model/ --out output/communicate/
+communicate:
+  path: custom_communicator.py
+  communicators:
+    - forest_plot_custom: 
+        vars: [model_mean, grader_length_diff_effects, grader_position_numeric_effects]
+        rank_vars: [model_mean]  
+        combined: true 
+        vertical_line: 0 
+        figsize: [12, 6]
+    #- summary_table
