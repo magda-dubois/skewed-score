@@ -5,7 +5,7 @@ data_process:
     - extract_observed_feature: {feature_name: left_chosen}
     - extract_features: 
         categorical_features: ['left_model', 'right_model', 'grader', 'question_id']
-        continuous_features: [length_diff, position_numeric]
+        continuous_features: [length_diff_prop, position_numeric]
         effect_coding_for_main_effects: true
         standardise: true
         interactions: true
@@ -17,16 +17,28 @@ data_process:
 model:
   path: custom_model.py
   models:
-    - name: pairwise_logistic_model_nc
+    - name: pairwise_logistic_model_nc_clean
+      config:
+        tag: _grader
+        hierarchical_effects: 
+          - [question_id, 'left_model']
+          - [grader, 'left_model'] 
+          - [grader, position_numeric]
+          - [grader, length_diff_prop]
+        hierarchical_continuous: [position_numeric, length_diff_prop]
+        prior_hierarchical_mean_scale: 1.0 
+        prior_hierarchical_sigma_scale: 0.5
+    - name: pairwise_logistic_model_nc_clean
       config:
         tag: _full
         hierarchical_effects: 
           - [question_id, 'left_model']
           - [grader, position_numeric]
-          - [grader, length_diff]
-        hierarchical_continuous: [position_numeric, length_diff]
+          - [grader, length_diff_prop]
+        hierarchical_continuous: [position_numeric, length_diff_prop]
         prior_hierarchical_mean_scale: 1.0 
         prior_hierarchical_sigma_scale: 0.5  
+  
 
 check:
   checkers:
@@ -42,10 +54,13 @@ check:
 communicate:
   path: custom_communicator.py
   communicators:
-    - forest_plot_custom: 
-        vars: [model_mean, grader_length_diff_effects, grader_position_numeric_effects]
+    #- model_comparison_plot: {ic: waic}
+    - forest_plot_with_grader_diffs:  
+        vars: [model_mean, grader_preference_diff, grader_length_diff_prop_effects, grader_position_numeric_effects]
         rank_vars: [model_mean]  
         combined: true 
         vertical_line: 0 
-        figsize: [12, 6]
-    #- summary_table
+        figsize: [12, 10]  
+        gpt4_grader: 'gpt4_pair'
+        human_grader: 'human'
+    # GO back to nomal forest plot

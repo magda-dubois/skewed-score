@@ -9,4 +9,5 @@ dependencies = [
     "ipykernel>=7.1.0",
     "ipython>=9.7.0",
     "pandas>=2.3.3",
+    "scipy>=1.16.3",
 ]
