@@ -10,7 +10,7 @@ from hibayes.process import Features
 
 
 @model
-def pairwise_logistic(
+def pwl(
     hierarchical_effects: Optional[List[Union[Tuple[str, str], Tuple[str, str, str]]]] = None,
     hierarchical_continuous: Optional[List[str]] = None,
     prior_intercept_loc: float = 0.0,

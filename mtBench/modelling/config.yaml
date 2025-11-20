@@ -21,14 +21,14 @@ model:
   models:
     # ========== TEST NECESSITY OF HIERARCHICAL STRUCTURE ==========
     
-    - name: pairwise_logistic
+    - name: pwl
       config:
         tag: _question
         hierarchical_effects: 
           - [question_id, 'left_model']  # Only question
         hierarchical_continuous: []
     
-    - name: pairwise_logistic
+    - name: pwl
       config:
         tag: _grader
         hierarchical_effects: 
@@ -36,7 +36,7 @@ model:
         hierarchical_continuous: []
     
     # ========== BASELINE: Both biases (linear) ==========
-    - name: pairwise_logistic
+    - name: pwl
       config:
         tag: _grader_question_position_length
         hierarchical_effects: 
@@ -47,7 +47,7 @@ model:
         hierarchical_continuous: [position_numeric, length_diff_prop]
     
     # ========== COMPLEXITY: Test non-linearity and interactions ==========
-    - name: pairwise_logistic
+    - name: pwl
       config:
         tag: _grader_question_position_squaredlength
         hierarchical_effects: 
@@ -58,7 +58,7 @@ model:
           - [grader, length_diff_prop_squared] 
         hierarchical_continuous: [position_numeric, length_diff_prop, length_diff_prop_squared]
     
-    - name: pairwise_logistic
+    - name: pwl
       config:
         tag: _grader_question_position_length_3W
         hierarchical_effects: 
@@ -85,19 +85,19 @@ check:
 communicate:
   path: custom_communicator.py
   communicators:
-    - model_comparison_plot: {ic: waic}
-      figsize: [12, 8]
-    #- summary_table
-    - comprehensive_grader_forest_plot:
-        rank_by_baseline: true
+    # Combined plot
+    - model_comparison_with_forest:
+        ic: waic
+        figsize: [16, 6]
+        width_ratios: [1, 2]  
         vertical_line: 0
-        figsize: [12, 8]
-        combined: true
-        show_mode: "absolute" # "shifts", "absolute", or "mean_and_diff"
+        best_model: true
+        rank_by_baseline: true
         hdi_prob: 0.95
-        title: "Posterior Parameter Estimates with 95% HDI"
+        show_mode: "absolute"
         variable_labels:
           gpt4_absolute_quality: "GPT-4 ranking"
           human_absolute_quality: "Human ranking"
           position_bias_per_grader: "Position bias"
           length_bias_per_grader: "Length bias"
+        forest_title: "Posterior Parameter Estimates with 95% HDI"
