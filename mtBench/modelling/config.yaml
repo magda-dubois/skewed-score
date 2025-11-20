@@ -3,11 +3,13 @@ data_process:
   path: custom_processor.py
   processors:
     - extract_observed_feature: {feature_name: left_chosen}
+    - add_squared_column:  
+        feature: length_diff_prop
     - extract_features: 
         categorical_features: ['left_model', 'right_model', 'grader', 'question_id']
-        continuous_features: [length_diff_prop, position_numeric]
+        continuous_features: [length_diff_prop, length_diff_prop_squared, position_numeric] 
         effect_coding_for_main_effects: true
-        standardise: true
+        standardise: true  
         interactions: true
     - add_pairwise_model_dims:
         model_feature: left_model
@@ -17,29 +19,58 @@ data_process:
 model:
   path: custom_model.py
   models:
-    - name: pairwise_logistic_model_nc_clean
+    # ========== TEST NECESSITY OF HIERARCHICAL STRUCTURE ==========
+    
+    - name: pairwise_logistic
+      config:
+        tag: _question
+        hierarchical_effects: 
+          - [question_id, 'left_model']  # Only question
+        hierarchical_continuous: []
+    
+    - name: pairwise_logistic
       config:
         tag: _grader
+        hierarchical_effects: 
+          - [grader, 'left_model']  # Only grader
+        hierarchical_continuous: []
+    
+    # ========== BASELINE: Both biases (linear) ==========
+    - name: pairwise_logistic
+      config:
+        tag: _grader_question_position_length
+        hierarchical_effects: 
+          - [question_id, 'left_model']
+          - [grader, 'left_model'] 
+          - [grader, position_numeric]
+          - [grader, length_diff_prop]             
+        hierarchical_continuous: [position_numeric, length_diff_prop]
+    
+    # ========== COMPLEXITY: Test non-linearity and interactions ==========
+    - name: pairwise_logistic
+      config:
+        tag: _grader_question_position_squaredlength
         hierarchical_effects: 
           - [question_id, 'left_model']
           - [grader, 'left_model'] 
           - [grader, position_numeric]
           - [grader, length_diff_prop]
+          - [grader, length_diff_prop_squared] 
+        hierarchical_continuous: [position_numeric, length_diff_prop, length_diff_prop_squared]
+    
+    - name: pairwise_logistic
+      config:
+        tag: _grader_question_position_length_3W
+        hierarchical_effects: 
+          - [question_id, 'left_model']
+          - [grader, 'left_model'] 
+          - [grader, position_numeric]
+          - [grader, length_diff_prop]
+          - [grader, 'left_model', position_numeric]  
         hierarchical_continuous: [position_numeric, length_diff_prop]
         prior_hierarchical_mean_scale: 1.0 
         prior_hierarchical_sigma_scale: 0.5
-    - name: pairwise_logistic_model_nc_clean
-      config:
-        tag: _full
-        hierarchical_effects: 
-          - [question_id, 'left_model']
-          - [grader, position_numeric]
-          - [grader, length_diff_prop]
-        hierarchical_continuous: [position_numeric, length_diff_prop]
-        prior_hierarchical_mean_scale: 1.0 
-        prior_hierarchical_sigma_scale: 0.5  
   
-
 check:
   checkers:
     - prior_predictive_plot: {interactive: false}
@@ -54,13 +85,19 @@ check:
 communicate:
   path: custom_communicator.py
   communicators:
-    #- model_comparison_plot: {ic: waic}
-    - forest_plot_with_grader_diffs:  
-        vars: [model_mean, grader_preference_diff, grader_length_diff_prop_effects, grader_position_numeric_effects]
-        rank_vars: [model_mean]  
-        combined: true 
-        vertical_line: 0 
-        figsize: [12, 10]  
-        gpt4_grader: 'gpt4_pair'
-        human_grader: 'human'
-    # GO back to nomal forest plot
+    - model_comparison_plot: {ic: waic}
+      figsize: [12, 8]
+    #- summary_table
+    - comprehensive_grader_forest_plot:
+        rank_by_baseline: true
+        vertical_line: 0
+        figsize: [12, 8]
+        combined: true
+        show_mode: "absolute" # "shifts", "absolute", or "mean_and_diff"
+        hdi_prob: 0.95
+        title: "Posterior Parameter Estimates with 95% HDI"
+        variable_labels:
+          gpt4_absolute_quality: "GPT-4 ranking"
+          human_absolute_quality: "Human ranking"
+          position_bias_per_grader: "Position bias"
+          length_bias_per_grader: "Length bias"
