@@ -21,55 +21,68 @@ model:
   models:
     # ========== TEST NECESSITY OF HIERARCHICAL STRUCTURE ==========
     
-    - name: pwl
-      config:
-        tag: _question
-        hierarchical_effects: 
-          - [question_id, 'left_model']  # Only question
-        hierarchical_continuous: []
+    #- name: pwl
+    #  config:
+    #    tag: _question
+    #    hierarchical_effects: 
+    #      - [question_id, 'left_model']  # Only question
+    #    hierarchical_continuous: []
     
-    - name: pwl
-      config:
-        tag: _grader
-        hierarchical_effects: 
-          - [grader, 'left_model']  # Only grader
-        hierarchical_continuous: []
+    #- name: pwl
+    #  config:
+    #    tag: _grader
+    #    hierarchical_effects: 
+    #      - [grader, 'left_model']  # Only grader
+    #    hierarchical_continuous: []
     
     # ========== BASELINE: Both biases (linear) ==========
+    #- name: pwl
+    #  config:
+    #    tag: _grader_question_position_length
+    #    hierarchical_effects: 
+    #      - [question_id, 'left_model']
+    #      - [grader, 'left_model'] 
+    #      - [grader, position_numeric]
+    #      - [grader, length_diff_prop]             
+    #    hierarchical_continuous: [position_numeric, length_diff_prop]
+
+    # ========== PRIOR SENSITIVITY: Same model, tighter priors ==========
     - name: pwl
       config:
-        tag: _grader_question_position_length
+        tag: _grader_question_position_length_tighterpriors
         hierarchical_effects: 
           - [question_id, 'left_model']
           - [grader, 'left_model'] 
           - [grader, position_numeric]
           - [grader, length_diff_prop]             
         hierarchical_continuous: [position_numeric, length_diff_prop]
+        prior_hierarchical_mean_scale: 0.375     # 75% of default (0.5)
+        prior_hierarchical_sigma_scale: 0.75     # 75% of default (1.0)
     
     # ========== COMPLEXITY: Test non-linearity and interactions ==========
-    - name: pwl
-      config:
-        tag: _grader_question_position_squaredlength
-        hierarchical_effects: 
-          - [question_id, 'left_model']
-          - [grader, 'left_model'] 
-          - [grader, position_numeric]
-          - [grader, length_diff_prop]
-          - [grader, length_diff_prop_squared] 
-        hierarchical_continuous: [position_numeric, length_diff_prop, length_diff_prop_squared]
+    #- name: pwl
+    #  config:
+    #    tag: _grader_question_position_squaredlength
+    #    hierarchical_effects: 
+    #      - [question_id, 'left_model']
+    #      - [grader, 'left_model'] 
+    #      - [grader, position_numeric]
+    #      - [grader, length_diff_prop]
+    #      - [grader, length_diff_prop_squared] 
+    #    hierarchical_continuous: [position_numeric, length_diff_prop, length_diff_prop_squared]
     
-    - name: pwl
-      config:
-        tag: _grader_question_position_length_3W
-        hierarchical_effects: 
-          - [question_id, 'left_model']
-          - [grader, 'left_model'] 
-          - [grader, position_numeric]
-          - [grader, length_diff_prop]
-          - [grader, 'left_model', position_numeric]  
-        hierarchical_continuous: [position_numeric, length_diff_prop]
-        prior_hierarchical_mean_scale: 1.0 
-        prior_hierarchical_sigma_scale: 0.5
+    #- name: pwl
+    #  config:
+    #    tag: _grader_question_position_length_3W
+    #    hierarchical_effects: 
+    #      - [question_id, 'left_model']
+    #      - [grader, 'left_model'] 
+    #      - [grader, position_numeric]
+    #      - [grader, length_diff_prop]
+    #      - [grader, 'left_model', position_numeric]  
+    #    hierarchical_continuous: [position_numeric, length_diff_prop]
+    #    prior_hierarchical_mean_scale: 1.0 
+    #    prior_hierarchical_sigma_scale: 0.5
   
 check:
   checkers:
@@ -89,7 +102,7 @@ communicate:
     - model_comparison_with_forest:
         ic: waic
         figsize: [16, 6]
-        width_ratios: [1, 2]  
+        width_ratios: [1, 2.5]  
         vertical_line: 0
         best_model: true
         rank_by_baseline: true
@@ -101,3 +114,5 @@ communicate:
           position_bias_per_grader: "Position bias"
           length_bias_per_grader: "Length bias"
         forest_title: "Posterior Parameter Estimates with 95% HDI"
+    - summary_table:
+        best_model: false

@@ -5,6 +5,7 @@ import pandas as pd
 import arviz as az
 import xarray as xr
 from matplotlib.gridspec import GridSpec
+from pathlib import Path
 
 from hibayes.analysis_state import AnalysisState
 from hibayes.communicate import CommunicateResult, Communicator, communicate
@@ -24,6 +25,7 @@ def model_comparison_with_forest(
     show_mode: str = "absolute",
     variable_labels: dict[str, str] | None = None,
     forest_title: str | None = None,
+    save_comparison_table: bool = True,
     *args,
     **kwargs,
 ):
@@ -73,6 +75,20 @@ def model_comparison_with_forest(
         
         # Compute comparison
         comparisons = az.compare(data_dict, ic=ic)
+        
+        # ========== SAVE COMPARISON TABLE ==========
+        if save_comparison_table:
+            # Save to current directory (simple approach)
+            output_path = Path(f"model_comparison_{ic}.csv")
+            comparisons.to_csv(output_path)
+            
+            if display:
+                display.logger.info(f"\n{'='*60}")
+                display.logger.info(f"Saved model comparison table to {output_path.absolute()}")
+                display.logger.info(f"\n{ic.upper()} Model Comparison:")
+                display.logger.info(f"{'='*60}")
+                display.logger.info(f"\n{comparisons.to_string()}")
+                display.logger.info(f"{'='*60}\n")
         
         # Plot comparison
         az.plot_compare(comparisons, ax=ax_compare, plot_standard_error=True)
