@@ -191,3 +191,88 @@ def pwl(
         numpyro.sample("obs", dist.Bernoulli(logits=eta), obs=features["obs"])
 
     return model
+
+
+@model
+def pwl_flat(
+    prior_intercept_loc: float = 0.0,
+    prior_intercept_scale: float = 1.0,
+    prior_effect_scale: float = 10.0,  
+) -> Model:
+    """
+    Flat GLM with independent fixed effects (no hierarchical pooling).
+    Each question×model and grader×model combination estimated independently.
+    """
+
+    def model(features: Features) -> None:
+        
+        required = [
+            "obs",
+            "left_model_index", "right_model_index", "num_left_model",
+            "grader_index", "num_grader",
+            "question_id_index", "num_question_id",
+            "position_numeric", "length_diff_prop"
+        ]
+        check_features(features, required)
+
+        # Intercept
+        eta = numpyro.sample("intercept", dist.Normal(prior_intercept_loc, prior_intercept_scale))
+
+        # Fixed effects: Question × Model (no pooling)
+        question_model_effects = numpyro.sample(
+            "question_model_effects",
+            dist.Normal(0, prior_effect_scale).expand([
+                features["num_question_id"],
+                features["num_left_model"]
+            ]).to_event(2)
+        )
+        
+        # Fixed effects: Grader × Model (no pooling)
+        grader_model_effects = numpyro.sample(
+            "grader_model_effects",
+            dist.Normal(0, prior_effect_scale).expand([
+                features["num_grader"],
+                features["num_left_model"]
+            ]).to_event(2)
+        )
+        
+        # Fixed effects: Grader-specific position bias (no pooling)
+        grader_position_effects = numpyro.sample(
+            "grader_position_effects",
+            dist.Normal(0, prior_effect_scale).expand([features["num_grader"]]).to_event(1)
+        )
+        
+        # Fixed effects: Grader-specific length bias (no pooling)
+        grader_length_effects = numpyro.sample(
+            "grader_length_effects",
+            dist.Normal(0, prior_effect_scale).expand([features["num_grader"]]).to_event(1)
+        )
+        
+        # Combine effects (pairwise difference)
+        left_quality = question_model_effects[
+            features["question_id_index"],
+            features["left_model_index"]
+        ] + grader_model_effects[
+            features["grader_index"],
+            features["left_model_index"]
+        ]
+        
+        right_quality = question_model_effects[
+            features["question_id_index"],
+            features["right_model_index"]
+        ] + grader_model_effects[
+            features["grader_index"],
+            features["right_model_index"]
+        ]
+        
+        eta = eta + left_quality - right_quality
+        
+        # Add biases
+        eta = eta + grader_position_effects[features["grader_index"]] * features["position_numeric"]
+        eta = eta + grader_length_effects[features["grader_index"]] * features["length_diff_prop"]
+        
+        # Likelihood
+        probs = numpyro.deterministic("obs_probs", sigmoid(eta))
+        numpyro.sample("obs", dist.Bernoulli(logits=eta), obs=features["obs"])
+
+    return model

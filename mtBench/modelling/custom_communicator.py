@@ -8,7 +8,7 @@ from matplotlib.gridspec import GridSpec
 from pathlib import Path
 
 from hibayes.analysis_state import AnalysisState
-from hibayes.communicate import CommunicateResult, Communicator, communicate
+from hibayes.communicate._communicate import CommunicateResult, communicate
 from hibayes.ui import ModellingDisplay
 
 
@@ -17,6 +17,8 @@ def model_comparison_with_forest(
     ic: str = "waic",
     figsize: tuple = (20, 10),
     width_ratios: tuple = (1, 1.5),
+    wspace: float = 0.5,
+    model_name_map: dict[str, str] | None = None,
     # Forest plot parameters
     vertical_line: float | None = None,
     best_model: bool = True,
@@ -57,7 +59,7 @@ def model_comparison_with_forest(
         
         # Create figure with two subplots
         fig = plt.figure(figsize=figsize)
-        gs = GridSpec(1, 2, width_ratios=width_ratios, wspace=0.5)
+        gs = GridSpec(1, 2, width_ratios=width_ratios, wspace=wspace)
         
         # ========== LEFT: Model Comparison ==========
         ax_compare = fig.add_subplot(gs[0])
@@ -76,9 +78,18 @@ def model_comparison_with_forest(
         # Compute comparison
         comparisons = az.compare(data_dict, ic=ic)
         
+        # ========== RENAME MODELS IN COMPARISON ==========
+        if model_name_map:
+            # Rename the index
+            comparisons.index = comparisons.index.map(
+                lambda x: model_name_map.get(x, x)
+            )
+            
+            if display:
+                display.logger.info(f"Applied model name mapping: {model_name_map}")
+        
         # ========== SAVE COMPARISON TABLE ==========
         if save_comparison_table:
-            # Save to current directory (simple approach)
             output_path = Path(f"model_comparison_{ic}.csv")
             comparisons.to_csv(output_path)
             
